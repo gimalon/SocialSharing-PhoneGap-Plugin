@@ -301,56 +301,13 @@ public class SocialSharing extends CordovaPlugin {
   }
 
   private Uri getFileUriAndSetType(Intent sendIntent, String dir, String image, String subject, int nthFile) throws IOException {
-    // we're assuming an image, but this can be any filetype you like
-    String localImage = image;
     sendIntent.setType("image/*");
-    if (image.startsWith("http") || image.startsWith("www/")) {
-      String filename = getFileName(image);
-      localImage = "file://" + dir + "/" + filename;
-      if (image.startsWith("http")) {
-        // filename optimisation taken from https://github.com/EddyVerbruggen/SocialSharing-PhoneGap-Plugin/pull/56
-        URLConnection connection = new URL(image).openConnection();
-        String disposition = connection.getHeaderField("Content-Disposition");
-        if (disposition != null) {
-          final Pattern dispositionPattern = Pattern.compile("filename=([^;]+)");
-          Matcher matcher = dispositionPattern.matcher(disposition);
-          if (matcher.find()) {
-            filename = matcher.group(1).replaceAll("[^a-zA-Z0-9._-]", "");
-            localImage = "file://" + dir + "/" + filename;
-          }
-        }
-        saveFile(getBytes(connection.getInputStream()), dir, filename);
-      } else {
-        saveFile(getBytes(webView.getContext().getAssets().open(image)), dir, filename);
-      }
-    } else if (image.startsWith("data:")) {
-      // safeguard for https://code.google.com/p/android/issues/detail?id=7901#c43
-      if (!image.contains(";base64,")) {
-        sendIntent.setType("text/plain");
-        return null;
-      }
-      // image looks like this: data:image/png;base64,R0lGODlhDAA...
-      final String encodedImg = image.substring(image.indexOf(";base64,") + 8);
-      // correct the intent type if anything else was passed, like a pdf: data:application/pdf;base64,..
-      if (!image.contains("data:image/")) {
-        sendIntent.setType(image.substring(image.indexOf("data:") + 5, image.indexOf(";base64")));
-      }
-      // the filename needs a valid extension, so it renders correctly in target apps
-      final String imgExtension = image.substring(image.indexOf("/") + 1, image.indexOf(";base64"));
-      String fileName;
-      // if a subject was passed, use it as the filename
-      // filenames must be unique when passing in multiple files [#158]
-      if (notEmpty(subject)) {
-        fileName = sanitizeFilename(subject) + (nthFile == 0 ? "" : "_" + nthFile) + "." + imgExtension;
-      } else {
-        fileName = "file" + (nthFile == 0 ? "" : "_" + nthFile) + "." + imgExtension;
-      }
-      saveFile(Base64.decode(encodedImg, Base64.DEFAULT), dir, fileName);
-      localImage = "file://" + dir + "/" + fileName;
-    } else if (!image.startsWith("file://")) {
-      throw new IllegalArgumentException("URL_NOT_SUPPORTED");
-    }
-    return Uri.parse(localImage);
+    Context appContext = this.cordova.getActivity().getApplicationContext();
+    File filesDir = new File(appContext.getFilesDir(), "files");
+    File imgCacheDir = new File(filesDir, "imgcache");
+    File imageFile = new File(imgCacheDir, new File(image).getName());
+    Uri contentURI = FileProvider.getUriForFile(appContext, "com.gimalon.fileprovider", imageFile);
+    return contentURI;
   }
 
   private boolean invokeSMSIntent(final CallbackContext callbackContext, JSONObject options, String p_phonenumbers) {
