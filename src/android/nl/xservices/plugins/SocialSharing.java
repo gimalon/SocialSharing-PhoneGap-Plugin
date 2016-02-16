@@ -307,7 +307,7 @@ public class SocialSharing extends CordovaPlugin {
     File filesDir = new File(appContext.getFilesDir(), "files");
     File imgCacheDir = new File(filesDir, "imgcache");
     File imageFile = new File(imgCacheDir, new File(image).getName());
-    Uri contentURI = FileProvider.getUriForFile(appContext, "com.gimalon.fileprovider", imageFile);
+    Uri contentURI = FileProvider.getUriForFile(appContext, this.cordova.getActivity().getPackageName() + ".fileprovider" , imageFile);
     return contentURI;
   }
 
